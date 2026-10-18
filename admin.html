@@ -1,0 +1,326 @@
+const loginSection =
+    document.getElementById("loginSection");
+
+const adminSection =
+    document.getElementById("adminSection");
+
+const loginForm =
+    document.getElementById("loginForm");
+
+const siswaForm =
+    document.getElementById("siswaForm");
+
+
+// ==============================
+// CEK LOGIN
+// ==============================
+
+async function checkLogin() {
+
+    const response =
+        await fetch("/api/me");
+
+    const data =
+        await response.json();
+
+    if (data.admin) {
+
+        loginSection.classList.add("hidden");
+
+        adminSection.classList.remove("hidden");
+
+        loadAdminData();
+
+    }
+
+}
+
+checkLogin();
+
+
+// ==============================
+// LOGIN
+// ==============================
+
+loginForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+        const username =
+            document.getElementById("username").value;
+
+        const password =
+            document.getElementById("password").value;
+
+        const response =
+            await fetch("/api/login", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        document.getElementById(
+            "loginMessage"
+        ).textContent = data.message;
+
+        if (data.success) {
+
+            loginSection.classList.add("hidden");
+
+            adminSection.classList.remove("hidden");
+
+            loadAdminData();
+
+        }
+
+    }
+);
+
+
+// ==============================
+// LOAD DATA ADMIN
+// ==============================
+
+async function loadAdminData() {
+
+    const response =
+        await fetch("/api/admin/siswa");
+
+    if (response.status === 401) {
+        location.reload();
+        return;
+    }
+
+    const data =
+        await response.json();
+
+    const tbody =
+        document.getElementById("adminData");
+
+    tbody.innerHTML = "";
+
+    data.forEach((siswa, index) => {
+
+        const row =
+            document.createElement("tr");
+
+        row.innerHTML = `
+
+            <td>${index + 1}</td>
+
+            <td>${escapeHTML(siswa.nama)}</td>
+
+            <td>${escapeHTML(siswa.nisn)}</td>
+
+            <td>${escapeHTML(siswa.kelas)}</td>
+
+            <td>
+
+                <button
+                    onclick='editSiswa(${JSON.stringify(siswa)})'>
+                    Edit
+                </button>
+
+                <button
+                    class="danger"
+                    onclick="hapusSiswa(${siswa.id})">
+                    Hapus
+                </button>
+
+            </td>
+        `;
+
+        tbody.appendChild(row);
+
+    });
+
+}
+
+
+// ==============================
+// TAMBAH / EDIT
+// ==============================
+
+siswaForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+        const id =
+            document.getElementById("editId").value;
+
+        const nama =
+            document.getElementById("nama").value;
+
+        const nisn =
+            document.getElementById("nisn").value;
+
+        const kelas =
+            document.getElementById("kelas").value;
+
+        const method =
+            id ? "PUT" : "POST";
+
+        const url =
+            id
+                ? `/api/admin/siswa/${id}`
+                : "/api/admin/siswa";
+
+        const response =
+            await fetch(url, {
+
+                method,
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+                    nama,
+                    nisn,
+                    kelas
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        document.getElementById(
+            "message"
+        ).textContent = data.message;
+
+        if (data.success) {
+
+            resetForm();
+
+            loadAdminData();
+
+        }
+
+    }
+);
+
+
+// ==============================
+// EDIT
+// ==============================
+
+function editSiswa(siswa) {
+
+    document.getElementById("editId").value =
+        siswa.id;
+
+    document.getElementById("nama").value =
+        siswa.nama;
+
+    document.getElementById("nisn").value =
+        siswa.nisn;
+
+    document.getElementById("kelas").value =
+        siswa.kelas;
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+}
+
+
+// ==============================
+// HAPUS
+// ==============================
+
+async function hapusSiswa(id) {
+
+    const yakin =
+        confirm(
+            "Apakah kamu yakin ingin menghapus data ini?"
+        );
+
+    if (!yakin) return;
+
+    const response =
+        await fetch(
+            `/api/admin/siswa/${id}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+    const data =
+        await response.json();
+
+    document.getElementById(
+        "message"
+    ).textContent = data.message;
+
+    loadAdminData();
+
+}
+
+
+// ==============================
+// RESET FORM
+// ==============================
+
+function resetForm() {
+
+    siswaForm.reset();
+
+    document.getElementById(
+        "editId"
+    ).value = "";
+
+}
+
+
+// ==============================
+// LOGOUT
+// ==============================
+
+async function logout() {
+
+    await fetch(
+        "/api/logout",
+        {
+            method: "POST"
+        }
+    );
+
+    location.reload();
+
+}
+
+
+// ==============================
+// KEAMANAN HTML
+// ==============================
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
